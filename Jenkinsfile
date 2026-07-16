@@ -3,7 +3,7 @@ pipeline {
 
     tools {
         // Asegúrate de que este nombre coincida con el configurado en tus Global Tools
-        nodejs 'NodeJS-LTS'
+        nodejs 'node'
     }
 
     environment {
