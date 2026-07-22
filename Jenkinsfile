@@ -1,8 +1,11 @@
 pipeline {
-    agent any
-
-    tools {
-        nodejs 'node'
+    // Run the pipeline inside an isolated Node.js 7.8.0 Docker container
+    agent {
+        docker {
+            image 'node:7.8.0'
+            // Mount the host Docker socket to enable Docker-in-Docker operations
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
     }
 
     environment {
@@ -20,21 +23,21 @@ pipeline {
 
         stage('Build') {
             steps {
+                echo "Installing dependencies inside node:7.8.0 agent..."
                 sh 'npm install'
             }
         }
 
         stage('Test') {
             steps {
+                echo "Running unit tests inside node:7.8.0 agent..."
                 sh 'npm test'
             }
         }
 
-        // --- TASK: Hadolint check before build ---
         stage('Lint Dockerfile') {
             steps {
                 echo "Linting Dockerfile with Hadolint..."
-                // Runs Hadolint against your Dockerfile
                 sh 'hadolint Dockerfile'
             }
         }
@@ -46,11 +49,9 @@ pipeline {
             }
         }
 
-        // --- TASK: Vulnerability scan using Trivy ---
         stage('Security Scan (Trivy)') {
             steps {
                 echo "Scanning Docker image for vulnerabilities with Trivy..."
-                // Scans the local docker image for HIGH and CRITICAL vulnerabilities
                 sh "trivy image --severity HIGH,CRITICAL ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
