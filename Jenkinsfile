@@ -37,8 +37,9 @@ pipeline {
 
         stage('Lint Dockerfile') {
             steps {
-                echo "Linting Dockerfile with Hadolint..."
-                sh 'hadolint Dockerfile'
+                echo "Linting Dockerfile with Hadolint Docker Container..."
+                // Corre hadolint desde su contenedor de Docker pasando el Dockerfile del workspace
+                sh 'docker run --rm -i hadolint/hadolint < Dockerfile'
             }
         }
 
