@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     tools {
-        // Must match the exact name configured in Global Tool Configuration
         nodejs 'node'
     }
 
@@ -21,15 +20,22 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo "Installing dependencies..."
                 sh 'npm install'
             }
         }
 
         stage('Test') {
             steps {
-                echo "Running unit tests..."
                 sh 'npm test'
+            }
+        }
+
+        // --- TASK: Hadolint check before build ---
+        stage('Lint Dockerfile') {
+            steps {
+                echo "Linting Dockerfile with Hadolint..."
+                // Runs Hadolint against your Dockerfile
+                sh 'hadolint Dockerfile'
             }
         }
 
@@ -37,6 +43,15 @@ pipeline {
             steps {
                 echo "Building local image ${IMAGE_NAME}:${IMAGE_TAG}..."
                 sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        // --- TASK: Vulnerability scan using Trivy ---
+        stage('Security Scan (Trivy)') {
+            steps {
+                echo "Scanning Docker image for vulnerabilities with Trivy..."
+                // Scans the local docker image for HIGH and CRITICAL vulnerabilities
+                sh "trivy image --severity HIGH,CRITICAL ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
 
@@ -54,11 +69,8 @@ pipeline {
         stage('Trigger CD Pipeline') {
             steps {
                 script {
-                    // Determine which CD pipeline to trigger based on the active branch
                     def targetPipeline = (env.BRANCH_NAME == 'main') ? 'Deploy_to_main' : 'Deploy_to_dev'
                     echo "Triggering CD pipeline: ${targetPipeline}..."
-                    
-                    // Trigger the job asynchronously without blocking this pipeline
                     build job: targetPipeline, wait: false
                 }
             }
@@ -67,7 +79,6 @@ pipeline {
 
     post {
         always {
-            // Securely log out from Docker Hub on completion
             sh 'docker logout'
         }
     }
